@@ -4,10 +4,11 @@ import azure.batch.batch_auth as batchauth
 import azure.batch.models as batchmodels
 import os
 import sys
-from azure.storage.blob import BlobServiceClient
+import azure.storage.blob
 from pathlib import Path
 import time
 import settings
+import datetime
 
 account = settings.account
 key = settings.key
@@ -86,7 +87,7 @@ def create_task(n, blend_file_name):
   for f in input_file_paths:
     print("copy to storage: {0}".format(f))
 
-  blob_service_client = BlobServiceClient.from_connection_string(storage_connection_string)
+  blob_service_client = azure.storage.blob.BlobServiceClient.from_connection_string(storage_connection_string)
   container_client = blob_service_client.get_container_client('blender')
 
   input_files = []
@@ -109,13 +110,43 @@ def create_task(n, blend_file_name):
 
   tasks = list()
 
-  commands = "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$AZ_BATCH_NODE_STARTUP_DIR/blender/lib; $AZ_BATCH_NODE_STARTUP_DIR/blender/blender -b " + blend_file_name + " -o $AZ_BATCH_TASK_DIR/frame_##### -f 1"
+  frame = 1
+
+  commands = "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$AZ_BATCH_NODE_STARTUP_DIR/blender/lib; $AZ_BATCH_NODE_STARTUP_DIR/blender/blender -b " + blend_file_name + " -o $AZ_BATCH_TASK_WORKING_DIR/frame_##### -f " + str(frame)
+  #commands ="echo \"hello\" > $AZ_BATCH_TASK_WORKING_DIR/frame_00001.png" 
   command = "/bin/sh -c \"" + commands + "\""
+
+  # upload
+  time_expiry = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+
+  upload_file_name = "frame_{0:05d}.png".format(frame)
+  upload_key = azure.storage.blob.generate_blob_sas(
+    settings.storage_account_name,
+    'blender',
+    upload_file_name,
+    account_key=settings.storage_account_key,
+    expiry=time_expiry,
+    permission=azure.storage.blob.BlobSasPermissions(read=True, add=True, write=True, create=True)
+  )
+  upload_url = settings.storage_url + "?" + upload_key
+
+  output_file = batchmodels.OutputFile(
+    file_pattern=upload_file_name,
+    destination=batchmodels.OutputFileDestination(
+      container=batchmodels.OutputFileBlobContainerDestination(
+        container_url=upload_url
+      )
+    ),
+    upload_options=batchmodels.OutputFileUploadOptions(
+      upload_condition=batchmodels.OutputFileUploadCondition.task_success
+    )
+  )
 
   tasks.append(batchmodels.TaskAddParameter(
     id="Task_" + n,
     command_line = command,
-    resource_files=[input_files[0]]
+    resource_files=[input_files[0]],
+    output_files=[output_file]
   ))
 
   client.task.add_collection(job_id, tasks)
