@@ -1,0 +1,5 @@
+# Please see Azure Portal
+account = "Azure Batch Account"
+key = "Azure Batch Key"
+batch_url = "Azure Batch URL"
+storage_connection_string = "Storage Connection String"
