@@ -100,6 +100,7 @@ def create_task(n, blend_file_name):
       blob.upload_blob(data, overwrite=True)
       input_files.append(batchmodels.ResourceFile(auto_storage_container_name="blender"))
 
+  # job
   job_id = 'render_job_' + n
   job = batchmodels.JobAddParameter(
     id=job_id,
@@ -108,10 +109,10 @@ def create_task(n, blend_file_name):
 
   client.job.add(job)
 
+  # task
   tasks = list()
 
   frame = 1
-
   commands = "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$AZ_BATCH_NODE_STARTUP_DIR/blender/lib; $AZ_BATCH_NODE_STARTUP_DIR/blender/blender -b " + blend_file_name + " -o $AZ_BATCH_TASK_WORKING_DIR/frame_##### -f " + str(frame)
   #commands ="echo \"hello\" > $AZ_BATCH_TASK_WORKING_DIR/frame_00001.png" 
   command = "/bin/sh -c \"" + commands + "\""
@@ -151,7 +152,6 @@ def create_task(n, blend_file_name):
 
   client.task.add_collection(job_id, tasks)
   print("[job_id]: {0}".format(job_id))
-
 
 
 if __name__ == "__main__":

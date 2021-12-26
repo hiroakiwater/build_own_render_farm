@@ -42,3 +42,4 @@ After, Please check the result on Azure Portal.
 - Microsoft's Documents
     - https://docs.microsoft.com/en-us/azure/batch/
     - https://docs.microsoft.com/en-us/azure/batch/quick-run-python
+    - https://docs.microsoft.com/en-us/azure/batch/tutorial-parallel-python
